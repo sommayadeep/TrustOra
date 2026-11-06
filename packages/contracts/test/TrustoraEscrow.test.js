@@ -1,5 +1,5 @@
-const { expect } = require("chai");
-const hre = require("hardhat");
+import { expect } from "chai";
+import { network } from "hardhat";
 
 describe("TrustoraEscrow Smart Contract", function () {
   let ethers;
@@ -18,7 +18,7 @@ describe("TrustoraEscrow Smart Contract", function () {
   const MILESTONE_AMOUNT = 500n * 10n ** 6n; // 500 USDC (6 decimals)
 
   before(async function () {
-    ethers = hre.ethers;
+    ({ ethers } = await network.create());
     PROJECT_ID = ethers.encodeBytes32String("TRU-PROJ-2026-001");
     CRITERIA_HASH = ethers.keccak256(ethers.toUtf8Bytes("Acceptance Criteria v1.0"));
     DELIVERABLE_HASH = ethers.keccak256(ethers.toUtf8Bytes("Deliverable Bundle v1.0"));

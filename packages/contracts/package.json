@@ -2,6 +2,7 @@
   "name": "@trustora/contracts",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Trustora Smart Contracts — Arc Testnet USDC Escrow",
   "scripts": {
     "compile": "hardhat compile",
@@ -11,11 +12,14 @@
     "check:deployment": "hardhat run scripts/check-deployment.ts --network arcTestnet"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
+    "@nomicfoundation/hardhat-ethers": "^4.2.2",
+    "@nomicfoundation/hardhat-ethers-chai-matchers": "^3.0.13",
+    "@nomicfoundation/hardhat-mocha": "^4.0.1",
     "@openzeppelin/contracts": "^5.6.1",
     "@types/chai": "^4.3.16",
     "@types/mocha": "^10.0.6",
     "@types/node": "^26.6.6",
+    "chai": "^5.3.3",
     "dotenv": "^16.4.5",
     "hardhat": "^3.21.2",
     "ts-node": "^10.9.2",

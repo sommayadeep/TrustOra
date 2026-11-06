@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { TRUSTORA_ESCROW_ABI } from "../src/lib/arc";
 
-const artifactPath = join(__dirname, "../artifacts/contracts/TrustoraEscrow.sol/TrustoraEscrow.json");
+const artifactPath = join(dirname(fileURLToPath(import.meta.url)), "../artifacts/contracts/TrustoraEscrow.sol/TrustoraEscrow.json");
 
 test("escrow ABI covers every function, dispute/refund path and event", () => {
   const fns: string[] = TRUSTORA_ESCROW_ABI.filter((x) => x.type === "function").map((x) => x.name);
