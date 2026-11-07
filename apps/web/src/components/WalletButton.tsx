@@ -15,13 +15,13 @@ export function WalletButton() {
   const auth = useAuth();
 
   if (!w.mounted) {
-    return <div className="h-9 w-40 animate-pulse rounded-lg bg-slate-100" aria-hidden />;
+    return <div className="h-9 w-40 animate-pulse rounded-lg bg-surface-2" aria-hidden />;
   }
 
   if (!w.isConnected) {
     if (!w.hasProvider) {
       return (
-        <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className={`${btn} border border-[#E5EAF1] text-slate-700 hover:bg-slate-50`}>
+        <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className={`${btn} border border-rule text-ink-2 hover:bg-surface-2`}>
           <ExternalLink className="h-4 w-4" /> Install MetaMask
         </a>
       );
@@ -42,7 +42,7 @@ export function WalletButton() {
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {w.onArc ? (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-ok">
           <CheckCircle2 className="h-3.5 w-3.5" /> Arc Testnet
         </span>
       ) : (
@@ -52,16 +52,16 @@ export function WalletButton() {
         </button>
       )}
 
-      <span className="rounded-lg border border-[#E5EAF1] bg-[#F8FAFC] px-2.5 py-1.5 font-mono text-xs text-slate-700" title={w.address}>
+      <span className="rounded-lg border border-rule bg-surface-2 px-2.5 py-1.5 mono text-xs text-ink-2" title={w.address}>
         {shortAddress(w.address)}
       </span>
 
       {signedIn ? (
         <div className="flex items-center gap-2">
-          <button onClick={w.connectMetaMask} disabled={w.connecting} className={`${btn} border border-[#E5EAF1] text-slate-700 hover:bg-slate-50`} title="Switch to another MetaMask account">
+          <button onClick={w.connectMetaMask} disabled={w.connecting} className={`${btn} border border-rule text-ink-2 hover:bg-surface-2`} title="Switch to another MetaMask account">
             <Wallet className="h-4 w-4" /> Switch wallet
           </button>
-          <button onClick={auth.signOut} disabled={auth.busy} className={`${btn} border border-[#E5EAF1] text-slate-700 hover:bg-slate-50`} title="End your TRUSTORA session">
+          <button onClick={auth.signOut} disabled={auth.busy} className={`${btn} border border-rule text-ink-2 hover:bg-surface-2`} title="End your TRUSTORA session">
             <ShieldCheck className="h-4 w-4 text-emerald-400" /> Signed in
           </button>
         </div>
@@ -71,10 +71,10 @@ export function WalletButton() {
         </Link>
       )}
 
-      <button onClick={w.disconnect} className={`${btn} px-2 text-slate-500 hover:text-[#172B4D]`} title="Disconnect wallet" aria-label="Disconnect wallet">
+      <button onClick={w.disconnect} className={`${btn} px-2 text-ink-3 hover:text-ink`} title="Disconnect wallet" aria-label="Disconnect wallet">
         <LogOut className="h-4 w-4" />
       </button>
-      {auth.error && <p className="basis-full text-right text-xs text-rose-700">{auth.error}</p>}
+      {auth.error && <p className="basis-full text-right text-xs text-risk">{auth.error}</p>}
       {auth.walletMismatch && (
         <p className="basis-full text-right text-xs text-amber-300">
           Your session belongs to {shortAddress(auth.sessionAddress)}. Sign in again to use this wallet.

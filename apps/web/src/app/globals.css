@@ -2,36 +2,245 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+/* ===========================================================================
+   TRUSTORA design system
+   Warm paper ground, midnight navy ink, royal blue for action, sage for proof.
+   Glass is reserved for floating layers. Neumorphism is reserved for controls.
+   Everything else is flat surface and hairline rule, so the type can carry the page.
+   =========================================================================== */
 
-html { background: #f8fafc; scroll-behavior: smooth; }
+:root {
+  color-scheme: light;
+
+  /* Ground and surfaces */
+  --paper: #f5f5f0;
+  --paper-deep: #ecece5;
+  --surface: #ffffff;
+  --surface-2: #eaece8;
+  --surface-3: #dde1dd;
+
+  /* Ink */
+  --ink: #17243a;
+  --ink-2: #4a5566;
+  --ink-3: #78818c;
+  --ink-inverse: #f7f8f5;
+
+  /* Accent */
+  --royal: #4969d6;
+  --royal-deep: #3450b4;
+  --royal-wash: #eef1fc;
+  --sage: #a8b9aa;
+  --sage-deep: #6e8572;
+  --sage-wash: #eef2ee;
+
+  /* Semantic, tuned for contrast on warm paper */
+  --ok: #3f7d58;
+  --ok-wash: #e9f1ec;
+  --warn: #9a6b1f;
+  --warn-wash: #f6efe1;
+  --risk: #a4414b;
+  --risk-wash: #f8ebec;
+  --idle: #78818c;
+  --idle-wash: #ecedea;
+
+  /* Hairlines */
+  --rule: #e2e3dd;
+  --rule-strong: #cfd2ca;
+
+  /* Glass */
+  --glass-bg: rgba(255, 255, 255, 0.68);
+  --glass-bg-strong: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-blur: 18px;
+
+  /* Elevation: low, wide, warm-tinted. No neon, no stacking. */
+  --shadow-hair: 0 1px 2px rgba(23, 36, 58, 0.04);
+  --shadow-soft: 0 2px 8px rgba(23, 36, 58, 0.05);
+  --shadow-float: 0 12px 32px -12px rgba(23, 36, 58, 0.18), 0 2px 8px rgba(23, 36, 58, 0.04);
+  --shadow-lift: 0 24px 56px -20px rgba(23, 36, 58, 0.22), 0 4px 12px rgba(23, 36, 58, 0.05);
+
+  /* Neumorphic pair: light from top-left, on the secondary surface only */
+  --neu-light: rgba(255, 255, 255, 0.9);
+  --neu-dark: rgba(23, 36, 58, 0.1);
+
+  /* Radii: three steps, used consistently */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+html {
+  background: var(--paper);
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 body {
   min-height: 100vh;
-  background: #f8fafc;
-  color: #172b4d;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  color: var(--ink);
+  background-color: var(--paper);
+  /* Architectural ground: one faint vertical rhythm plus a warm corner bloom. */
+  background-image:
+    linear-gradient(to right, rgba(23, 36, 58, 0.022) 1px, transparent 1px),
+    radial-gradient(1100px 520px at 88% -8%, rgba(73, 105, 214, 0.05), transparent 62%),
+    radial-gradient(760px 420px at -6% 4%, rgba(168, 185, 170, 0.08), transparent 60%);
+  background-size: 96px 100%, 100% 100%, 100% 100%;
+  background-attachment: fixed, fixed, fixed;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
 }
+
+/* Numerals in tabular form wherever money or hashes appear. */
+.tnum { font-variant-numeric: tabular-nums; }
 
 @layer utilities {
-  .glass-card { background: #fff; border: 1px solid #e5eaf1; box-shadow: 0 1px 2px rgba(23,43,77,.03); }
-  .glass-card-hover {
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  /* ---------- Glass: floating layers only ---------- */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-float);
   }
-  .glass-card-hover:hover {
-    border-color: #c7d5ed;
-    box-shadow: 0 8px 24px rgba(23,43,77,.07);
+  .glass-strong {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-lift);
+  }
+  /* A hairline of light along the top edge sells the layering. */
+  .glass-sheen { position: relative; }
+  .glass-sheen::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+    pointer-events: none;
+  }
+
+  /* ---------- Flat surfaces: the default ---------- */
+  .surface {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    box-shadow: var(--shadow-hair);
+  }
+  .surface-quiet {
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+  }
+  .surface-hover {
+    transition: border-color 180ms var(--ease), box-shadow 180ms var(--ease), transform 180ms var(--ease);
+  }
+  .surface-hover:hover {
+    border-color: var(--rule-strong);
+    box-shadow: var(--shadow-soft);
     transform: translateY(-1px);
   }
+
+  /* ---------- Neumorphism: controls only ---------- */
+  .neu {
+    background: var(--surface-2);
+    box-shadow: -3px -3px 7px var(--neu-light), 3px 3px 7px var(--neu-dark);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+  }
+  .neu-inset {
+    background: var(--surface-2);
+    box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+    border: 1px solid rgba(23, 36, 58, 0.04);
+  }
+  .neu-press {
+    transition: box-shadow 140ms var(--ease), transform 140ms var(--ease);
+  }
+  .neu-press:active {
+    box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+    transform: translateY(0.5px);
+  }
+
+  /* ---------- Editorial type ---------- */
+  .display {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    line-height: 0.98;
+    text-wrap: balance;
+  }
+  .display-xl { font-size: clamp(2.75rem, 7.4vw, 5.75rem); }
+  .display-lg { font-size: clamp(2.1rem, 4.6vw, 3.5rem); }
+  .display-md { font-size: clamp(1.6rem, 2.9vw, 2.25rem); letter-spacing: -0.022em; line-height: 1.04; }
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .lede { font-size: clamp(1rem, 1.35vw, 1.1875rem); line-height: 1.6; color: var(--ink-2); }
+  .mono { font-family: var(--font-mono), ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Form fields ---------- */
+  .field {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--ink);
+    transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+  }
+  .field::placeholder { color: var(--ink-3); }
+  .field:hover { border-color: var(--ink-3); }
+  .field:focus {
+    outline: none;
+    border-color: var(--royal);
+    box-shadow: 0 0 0 3px rgba(73, 105, 214, 0.12);
+  }
+  .field-label { display: block; font-size: 0.8125rem; font-weight: 500; color: var(--ink-2); }
+
+  /* ---------- Hairline rules as structure ---------- */
+  .rule-t { border-top: 1px solid var(--rule); }
+  .rule-b { border-bottom: 1px solid var(--rule); }
+  .rule-l { border-left: 1px solid var(--rule); }
+
+  /* ---------- Motion ---------- */
+  .anim-rise { animation: rise 260ms var(--ease) both; }
+  .anim-fade { animation: fade 200ms var(--ease) both; }
+  .anim-pop { animation: pop 180ms var(--ease) both; }
+  .shimmer {
+    background: linear-gradient(90deg, var(--surface-2) 25%, #f2f3ef 42%, var(--surface-2) 60%);
+    background-size: 280% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
 }
 
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { from { background-position: 180% 0; } to { background-position: -80% 0; } }
 
-/* Visible keyboard focus across the light interface. */
+/* Keyboard focus stays visible on every surface, glass included. */
 :focus-visible {
-  outline: 2px solid #3867f6;
+  outline: 2px solid var(--royal);
   outline-offset: 2px;
+  border-radius: 4px;
 }
+
+::selection { background: rgba(73, 105, 214, 0.16); color: var(--ink); }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .animate-pulse, .animate-spin { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Glass degrades to an opaque surface where blur is unsupported. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .glass-strong { background: rgba(255, 255, 255, 0.97); }
 }

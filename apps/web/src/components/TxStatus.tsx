@@ -31,7 +31,7 @@ export function TxStatus({ state, onResync, onDismiss }: { state: TxState; onRes
   const working = ["signing", "confirming", "syncing"].includes(state.phase);
   const steps = stepStates(state);
   const tone =
-    state.phase === "error" ? "border-rose-200 bg-rose-50"
+    state.phase === "error" ? "border-risk/30 bg-rose-50"
     : state.phase === "done" ? "border-emerald-200 bg-emerald-50"
     : "border-sky-200 bg-sky-50";
   const message =
@@ -49,11 +49,11 @@ export function TxStatus({ state, onResync, onDismiss }: { state: TxState; onRes
           {state.phase === "done" && <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />}
           {state.phase === "error" && <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-300" />}
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-[#172B4D]">{state.label}</p>
-            <p className="mt-0.5 text-sm text-slate-600">{message}</p>
+            <p className="font-medium text-ink">{state.label}</p>
+            <p className="mt-0.5 text-sm text-ink-2">{message}</p>
             <ol className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" aria-label="Transaction progress">
               {steps.map((st, i) => (
-                <li key={i} className={st === "done" ? "text-emerald-700" : st === "active" ? "text-sky-700" : st === "failed" ? "text-rose-700" : "text-slate-500"}>
+                <li key={i} className={st === "done" ? "text-ok" : st === "active" ? "text-sky-700" : st === "failed" ? "text-risk" : "text-ink-3"}>
                   {st === "done" ? "✓" : st === "failed" ? "✕" : i + 1}. {STEP_LABELS[state.verifies ? i : i === 0 ? 0 : 1]}
                 </li>
               ))}
@@ -62,11 +62,11 @@ export function TxStatus({ state, onResync, onDismiss }: { state: TxState; onRes
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {state.canResync && (
-              <button onClick={onResync} className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-white">
+              <button onClick={onResync} className="inline-flex items-center gap-1 rounded-md border border-rule-strong px-2.5 py-1 text-xs text-ink-2 hover:bg-white">
                 <RefreshCw className="h-3 w-3" /> Sync now
               </button>
             )}
-            {!working && <button onClick={onDismiss} aria-label="Dismiss" className="rounded p-1 text-slate-600 hover:bg-white"><X className="h-4 w-4" /></button>}
+            {!working && <button onClick={onDismiss} aria-label="Dismiss" className="rounded p-1 text-ink-2 hover:bg-white"><X className="h-4 w-4" /></button>}
           </div>
         </div>
       </div>

@@ -68,16 +68,16 @@ export function AgreementPanel({ detail, tx }: { detail: ProjectResponse; tx: Re
 
   const Step = ({ done, children }: { done: boolean; children: React.ReactNode }) => (
     <li className="flex items-center gap-2 text-sm">
-      {done ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Circle className="h-4 w-4 text-slate-500" />}
-      <span className={done ? "text-slate-700" : "text-slate-500"}>{children}</span>
+      {done ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Circle className="h-4 w-4 text-ink-3" />}
+      <span className={done ? "text-ink-2" : "text-ink-3"}>{children}</span>
     </li>
   );
 
   return (
     <Card>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-[#172B4D]"><FileSignature className="h-5 w-5 text-[#3867F6]" /> Agreement v{agreement.versionNumber}</h2>
-        <span className="font-mono text-xs text-slate-500" title={agreement.criteriaHash}>criteria hash {agreement.criteriaHash.slice(0, 14)}…</span>
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-ink"><FileSignature className="h-5 w-5 text-royal" /> Agreement v{agreement.versionNumber}</h2>
+        <span className="mono text-xs text-ink-3" title={agreement.criteriaHash}>criteria hash {agreement.criteriaHash.slice(0, 14)}…</span>
       </div>
 
       <ol className="mb-5 grid gap-1.5 sm:grid-cols-2">
@@ -89,10 +89,10 @@ export function AgreementPanel({ detail, tx }: { detail: ProjectResponse; tx: Re
 
       <ul className="space-y-2">
         {criteria.map((c) => (
-          <li key={c.id} className="flex items-start gap-3 rounded-lg bg-[#F8FAFC] px-3 py-2 text-sm">
-            <span className="mt-0.5 rounded border border-[#E5EAF1] px-1.5 text-[10px] uppercase tracking-wide text-slate-500">{c.category}</span>
-            <span className="text-slate-700">{c.text}</span>
-            {c.mandatory && <span className="ml-auto shrink-0 text-[10px] uppercase text-amber-700">mandatory</span>}
+          <li key={c.id} className="flex items-start gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+            <span className="mt-0.5 rounded border border-rule px-1.5 text-[10px] uppercase tracking-wide text-ink-3">{c.category}</span>
+            <span className="text-ink-2">{c.text}</span>
+            {c.mandatory && <span className="ml-auto shrink-0 text-[10px] uppercase text-warn">mandatory</span>}
           </li>
         ))}
       </ul>
@@ -108,11 +108,11 @@ export function AgreementPanel({ detail, tx }: { detail: ProjectResponse; tx: Re
             Register project on Arc
           </button>
         )}
-        {register && !register.available && register.reason && <span className="text-xs text-slate-400">{register.reason}</span>}
-        {accept && !accept.available && accept.reason && <span className="text-xs text-slate-400">{accept.reason}</span>}
+        {register && !register.available && register.reason && <span className="text-xs text-ink-3">{register.reason}</span>}
+        {accept && !accept.available && accept.reason && <span className="text-xs text-ink-3">{accept.reason}</span>}
       </div>
       {error && <p className="mt-3 text-sm text-rose-300">{error}</p>}
-      <p className="mt-4 text-xs text-slate-500">Signing accepts these criteria only. It does not authorize any transaction or movement of funds.</p>
+      <p className="mt-4 text-xs text-ink-3">Signing accepts these criteria only. It does not authorize any transaction or movement of funds.</p>
     </Card>
   );
 }

@@ -5,7 +5,43 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useAuth } from "./AuthProvider";
 import { useArcWallet } from "@/hooks/useArcWallet";
-import { Empty, PageSkeleton } from "./bits";
+import { Button, PageSkeleton } from "./bits";
+
+/** A composed gate panel rather than a centred box: icon, statement, action, reassurance. */
+function Gate({
+  icon: Icon,
+  title,
+  body,
+  action,
+  note,
+  error,
+}: {
+  icon: typeof Wallet;
+  title: string;
+  body: string;
+  action: ReactNode;
+  note: string;
+  error?: string | null;
+}) {
+  return (
+    <div className="anim-rise grid min-h-[46vh] place-items-center py-10">
+      <div className="glass glass-sheen w-full max-w-xl rounded-md p-8 sm:p-10">
+        <span className="neu inline-flex h-11 w-11 items-center justify-center rounded-sm text-royal">
+          <Icon className="h-5 w-5" />
+        </span>
+        <h1 className="display display-md mt-6 text-ink">{title}</h1>
+        <p className="mt-3 max-w-md text-sm leading-6 text-ink-2">{body}</p>
+        <div className="mt-7">{action}</div>
+        <p className="rule-t mt-7 pt-4 text-xs leading-5 text-ink-3">{note}</p>
+        {error && (
+          <p role="alert" className="mt-3 text-xs text-risk">
+            {error}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** Renders children only for a connected wallet with a valid server session; otherwise says exactly what is missing. */
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -17,23 +53,36 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
   if (!w.isConnected) {
     return (
-      <Empty title="Connect your wallet">
-        <p className="mb-4 flex items-center justify-center gap-2"><Wallet className="h-4 w-4" /> TRUSTORA uses your MetaMask wallet to sign in and to sign every escrow transaction.</p>
-        <button onClick={w.connectMetaMask} disabled={!w.hasProvider} className="rounded-lg bg-arc-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50">
-          {w.hasProvider ? "Connect MetaMask" : "MetaMask not detected"}
-        </button>
-      </Empty>
+      <Gate
+        icon={Wallet}
+        title="Connect your wallet"
+        body="TRUSTORA uses your wallet to sign in and to authorise every escrow transaction. Nothing is signed without you."
+        action={
+          <Button onClick={w.connectMetaMask} disabled={!w.hasProvider}>
+            {w.hasProvider ? "Connect MetaMask" : "MetaMask not detected"}
+          </Button>
+        }
+        note="Connecting reveals only your public address. TRUSTORA never sees your private key."
+      />
     );
   }
   if (auth.status !== "authenticated" || auth.walletMismatch) {
     return (
-      <Empty title={auth.walletMismatch ? "Sign in with the connected wallet" : "Sign in to continue"}>
-        <p className="mb-4 flex items-center justify-center gap-2"><ShieldCheck className="h-4 w-4" /> Sign a message to prove you own this wallet. It costs no gas and cannot move funds.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 rounded-lg bg-arc-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">
-          <ShieldCheck className="h-4 w-4" /> Choose a role to continue
-        </Link>
-        {auth.error && <p className="mt-3 text-rose-700">{auth.error}</p>}
-      </Empty>
+      <Gate
+        icon={ShieldCheck}
+        title={auth.walletMismatch ? "Sign in with the connected wallet" : "Sign in to continue"}
+        body="Sign a message to prove you own this wallet. It costs no gas and it cannot move funds."
+        action={
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-2 rounded-sm bg-royal px-4 py-2.5 text-sm font-medium text-white shadow-soft transition-all duration-150 hover:bg-royal-deep active:translate-y-px"
+          >
+            <ShieldCheck className="h-4 w-4" /> Choose a role to continue
+          </Link>
+        }
+        note="The signature proves ownership of the address. It is not a transaction."
+        error={auth.error}
+      />
     );
   }
   return <>{children}</>;

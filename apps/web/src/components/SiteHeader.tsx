@@ -2,30 +2,45 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CircleDollarSign, FileCheck2, LayoutDashboard, Menu, Search, ShieldCheck, SlidersHorizontal, Users, X } from "lucide-react";
+import { CircleDollarSign, FileCheck2, LayoutDashboard, Menu, Search, SlidersHorizontal, Users, X } from "lucide-react";
 import { useState } from "react";
 import { WalletButton } from "./WalletButton";
 import { useAuth } from "./AuthProvider";
 
 const clientLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/projects", label: "My Projects", icon: FileCheck2 },
-  { href: "/projects/new", label: "Create project", icon: CircleDollarSign },
+  { href: "/projects", label: "Contracts", icon: FileCheck2 },
+  { href: "/projects/new", label: "New", icon: CircleDollarSign },
   { href: "/dashboard#applications", label: "Applications", icon: Users },
-  { href: "/agent-payments", label: "Agent Payments", icon: SlidersHorizontal },
+  { href: "/agent-payments", label: "Agent", icon: SlidersHorizontal },
 ];
 const freelancerLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/marketplace", label: "Marketplace", icon: Search },
-  { href: "/dashboard#applications", label: "My Applications", icon: Users },
-  { href: "/projects", label: "My Contracts", icon: FileCheck2 },
-  { href: "/agent-payments", label: "Payments", icon: SlidersHorizontal },
+  { href: "/dashboard#applications", label: "Applications", icon: Users },
+  { href: "/projects", label: "Contracts", icon: FileCheck2 },
+  { href: "/agent-payments", label: "Agent", icon: SlidersHorizontal },
 ];
 
-/** A link is active on its own page; "Projects" also stays active inside a project but not on "New project". */
+/** A link is active on its own page; "Contracts" also stays active inside a project but not on "New". */
 function isActive(pathname: string, href: string): boolean {
   if (href === "/projects") return pathname === "/projects" || (pathname.startsWith("/projects/") && pathname !== "/projects/new");
-  return pathname === href.split("#")[0];
+  // A hash link points at a section, not a page, so it must never claim the active state;
+  // otherwise /dashboard and /dashboard#applications both highlight at once.
+  if (href.includes("#")) return false;
+  return pathname === href;
+}
+
+/** The TRUSTORA mark: a sealed aperture, drawn rather than imported, so it scales cleanly. */
+function Mark() {
+  return (
+    <span className="relative flex h-8 w-8 items-center justify-center rounded-[10px] bg-ink">
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden>
+        <path d="M12 3.2 19 6.4v5.3c0 4.2-2.8 7.6-7 9.1-4.2-1.5-7-4.9-7-9.1V6.4Z" fill="none" stroke="#f5f5f0" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M9 12.2l2.2 2.2L15.2 10" fill="none" stroke="#a8b9aa" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
 }
 
 export function SiteHeader() {
@@ -33,6 +48,7 @@ export function SiteHeader() {
   const auth = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const links = auth.accountRole === "FREELANCER" ? freelancerLinks : clientLinks;
+
   const nav = (mobile: boolean) =>
     links.map((l) => {
       const active = isActive(pathname, l.href);
@@ -42,26 +58,65 @@ export function SiteHeader() {
           href={l.href}
           aria-current={active ? "page" : undefined}
           onClick={() => setMobileOpen(false)}
-          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${mobile ? "" : ""} ${
-            active ? "bg-[#EAF0FF] font-medium text-[#2854DB]" : "text-slate-600 hover:bg-slate-100 hover:text-[#172B4D]"
-          }`}
+          className={`group relative flex items-center gap-2 rounded-sm px-3 py-2 text-sm transition-colors duration-150 ${
+            mobile ? "w-full" : ""
+          } ${active ? "text-ink" : "text-ink-3 hover:text-ink"}`}
         >
-          <l.icon className="h-4 w-4 shrink-0" />{l.label}
+          <l.icon className={`h-4 w-4 shrink-0 transition-colors ${active ? "text-royal" : "text-ink-3 group-hover:text-ink-2"}`} />
+          <span className={active ? "font-medium" : ""}>{l.label}</span>
+          {/* The active indicator is a short underscore, not a filled pill. */}
+          {active && !mobile && <span aria-hidden className="absolute inset-x-3 -bottom-px h-[2px] rounded-full bg-royal" />}
         </Link>
       );
     });
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[#E5EAF1] bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5 text-lg font-bold tracking-tight text-[#172B4D]">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#3867F6] text-white"><ShieldCheck className="h-5 w-5" /></span> TRUSTORA
-        </Link>
-        <nav className="hidden items-center gap-1 xl:flex" aria-label="Main">{nav(false)}</nav>
-        <div className="ml-auto flex items-center gap-3"><span className="hidden items-center gap-2 rounded-full border border-[#E5EAF1] bg-[#F8FAFC] px-3 py-2 text-xs font-medium text-slate-600 sm:inline-flex"><span className="h-2 w-2 rounded-full bg-emerald-500"/> Arc Testnet</span>{auth.accountRole && <span className="hidden rounded-full bg-[#EAF0FF] px-3 py-2 text-xs font-semibold text-[#2854DB] sm:inline-flex">{auth.accountRole === "CLIENT" ? "Client Workspace" : "Freelancer Workspace"}</span>}<WalletButton /></div>
-        <button type="button" aria-label={mobileOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#E5EAF1] text-slate-600 xl:hidden">{mobileOpen ? <X className="h-5 w-5"/> : <Menu className="h-5 w-5"/>}</button>
-      </div>
-      {mobileOpen && <nav className="grid gap-1 border-t border-[#E5EAF1] bg-white px-4 py-3 xl:hidden" aria-label="Mobile main">{nav(true)}</nav>}
-    </header>
+    <div className="sticky top-0 z-40 px-5 pt-4 sm:px-8">
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-8 focus:top-2 focus:z-50 focus:rounded-sm focus:bg-ink focus:px-3 focus:py-2 focus:text-xs focus:text-ink-inverse">
+        Skip to content
+      </a>
+      <header className="glass glass-sheen mx-auto w-full max-w-content rounded-md">
+        <div className="flex items-center gap-4 px-4 py-2.5 sm:px-5">
+          <Link href="/" className="flex shrink-0 items-center gap-2.5">
+            <Mark />
+            <span className="display text-[1.0625rem] font-extrabold tracking-[-0.04em] text-ink">TRUSTORA</span>
+          </Link>
+
+          <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Main">
+            {nav(false)}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-2.5">
+            <span className="hidden items-center gap-2 rounded-full border border-rule bg-surface/70 px-2.5 py-1.5 text-[0.6875rem] font-medium text-ink-2 md:inline-flex">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inset-0 rounded-full bg-ok" />
+              </span>
+              Arc Testnet
+            </span>
+            {auth.accountRole && (
+              <span className="hidden rounded-full bg-royal-wash px-2.5 py-1.5 text-[0.6875rem] font-semibold text-royal-deep xl:inline-flex">
+                {auth.accountRole === "CLIENT" ? "Client" : "Freelancer"}
+              </span>
+            )}
+            <WalletButton />
+            <button
+              type="button"
+              aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="neu neu-press inline-flex h-9 w-9 items-center justify-center rounded-sm text-ink-2 lg:hidden"
+            >
+              {mobileOpen ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
+            </button>
+          </div>
+        </div>
+
+        {mobileOpen && (
+          <nav className="anim-fade rule-t grid gap-0.5 px-3 py-3 lg:hidden" aria-label="Mobile main">
+            {nav(true)}
+          </nav>
+        )}
+      </header>
+    </div>
   );
 }

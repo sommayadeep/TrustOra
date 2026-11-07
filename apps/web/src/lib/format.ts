@@ -20,15 +20,19 @@ export const STATE_LABEL: Record<string, string> = {
   REFUNDED: "Refunded to client",
 };
 
+/**
+ * Badge tones on warm paper. The previous values were dark-theme colours
+ * (e.g. text-ink-3 on white), which failed contrast; these are tuned pairs.
+ */
 export const STATE_TONE: Record<string, string> = {
-  UNFUNDED: "bg-slate-500/15 text-slate-300 border-slate-500/30",
-  FUNDED: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  SUBMITTED: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
-  REVISION_REQUESTED: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  APPROVED: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  RELEASED: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  DISPUTED: "bg-rose-500/15 text-rose-300 border-rose-500/30",
-  REFUNDED: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+  UNFUNDED: "bg-idle-wash text-ink-2 border-rule-strong",
+  FUNDED: "bg-royal-wash text-royal-deep border-royal/25",
+  SUBMITTED: "bg-sage-wash text-sage-deep border-sage/40",
+  REVISION_REQUESTED: "bg-warn-wash text-warn border-warn/25",
+  APPROVED: "bg-ok-wash text-ok border-ok/25",
+  RELEASED: "bg-ok-wash text-ok border-ok/25",
+  DISPUTED: "bg-risk-wash text-risk border-risk/25",
+  REFUNDED: "bg-idle-wash text-ink-2 border-rule-strong",
 };
 
 /** Same-origin error text for display: never dumps raw objects. */

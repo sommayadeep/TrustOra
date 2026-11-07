@@ -38,8 +38,8 @@ function UsdcBalance() {
   });
   if (!w.onArc || bal.data === undefined) return null;
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E5EAF1] bg-white px-3 py-1 text-xs text-slate-600">
-      <Coins className="h-3.5 w-3.5 text-[#3867F6]" /> Your balance: {formatUsdc(fromUsdcBaseUnits(bal.data as bigint))} USDC
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-rule bg-white px-3 py-1 text-xs text-ink-2">
+      <Coins className="h-3.5 w-3.5 text-royal" /> Your balance: {formatUsdc(fromUsdcBaseUnits(bal.data as bigint))} USDC
     </span>
   );
 }
@@ -60,11 +60,11 @@ export function Workspace({ detail, view }: { detail: ProjectResponse; view: Pro
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="flex flex-wrap items-center gap-3 text-xl font-semibold text-[#172B4D]">
+          <h2 className="flex flex-wrap items-center gap-3 text-xl font-semibold text-ink">
             {TITLE[view]}
             <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide ${ACCENT[view]}`}>You are the {view}</span>
           </h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">{BLURB[view]}</p>
+          <p className="mt-1 max-w-2xl text-sm text-ink-2">{BLURB[view]}</p>
         </div>
         {view === "client" && <UsdcBalance />}
       </div>
@@ -73,7 +73,7 @@ export function Workspace({ detail, view }: { detail: ProjectResponse; view: Pro
         <div role="alert" className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
-            The escrow contract is not configured on this server (<code className="font-mono">ESCROW_CONTRACT_ADDRESS</code> is unset), so on-chain
+            The escrow contract is not configured on this server (<code className="mono">ESCROW_CONTRACT_ADDRESS</code> is unset), so on-chain
             actions are disabled. Agreement signing and drafting still work. Nothing is simulated.
           </p>
         </div>
@@ -92,7 +92,7 @@ export function Workspace({ detail, view }: { detail: ProjectResponse; view: Pro
       </div>
 
       {view === "client" && (
-        <Card className="text-xs text-slate-600">
+        <Card className="text-xs text-ink-2">
           Only your wallet can release escrowed funds. AI evaluations are advisory and are never connected to the release action.
         </Card>
       )}

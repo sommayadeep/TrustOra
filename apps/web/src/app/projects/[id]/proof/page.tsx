@@ -14,19 +14,19 @@ export default function ProofPage() {
       {({ project, chain }) => (
         <div className="space-y-5">
           <div>
-            <h2 className="text-xl font-semibold text-[#172B4D]">ProofTrack activity</h2>
+            <h2 className="text-xl font-semibold text-ink">ProofTrack activity</h2>
             {project.publishedAt
-              ? <Link href={`/verify/project/${encodeURIComponent(project.id)}`} className="mt-2 inline-block text-sm font-medium text-[#3867F6] hover:underline">Open public read-only verification page →</Link>
-              : <p className="mt-2 text-sm text-slate-500">Publish this project before sharing a public verification page.</p>}
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+              ? <Link href={`/verify/project/${encodeURIComponent(project.id)}`} className="mt-2 inline-block text-sm font-medium text-royal hover:underline">Open public read-only verification page →</Link>
+              : <p className="mt-2 text-sm text-ink-3">Publish this project before sharing a public verification page.</p>}
+            <p className="mt-1 max-w-2xl text-sm text-ink-2">
               Every Arc entry below was confirmed by the server against the chain (receipt, escrow event, sender role and contract state) before it was recorded.
               Vendor-reported items, such as an AI request ID, are marked pending because they are not blockchain transactions.
             </p>
           </div>
           {chain.escrowAddress && (
-            <Card className="text-sm text-slate-700">
+            <Card className="text-sm text-ink-2">
               Escrow contract:{" "}
-              <a href={arcAddressUrl(chain.escrowAddress)} target="_blank" rel="noreferrer" className="font-mono text-arc-light hover:underline">{chain.escrowAddress}</a>
+              <a href={arcAddressUrl(chain.escrowAddress)} target="_blank" rel="noreferrer" className="mono text-arc-light hover:underline">{chain.escrowAddress}</a>
             </Card>
           )}
           <ProofTimeline events={project.proofTrackEvents} />
