@@ -17,6 +17,7 @@ export interface ProjectDetail {
   escrowContractAddress: string | null;
   registerTxHash: string | null;
   createdAt: string;
+  publishedAt: string | null;
   agreementVersions: Array<{
     id: string; versionNumber: number; criteriaJson: string; criteriaHash: string;
     clientAccepted: boolean; freelancerAccepted: boolean; isLocked: boolean;
@@ -30,6 +31,7 @@ export interface ProjectDetail {
       evaluations: Array<{
         id: string; overallVerdict: string; inferenceRequestId: string | null; requestIdSource: string | null;
         teeVerified: boolean | null; teeVerifiedBy: string | null; modelId: string | null;
+        providerAddress: string | null;
         criteriaResultsJson: string; findingsJson: string; reportHash: string; advisoryNotice: string; createdAt: string;
       }>;
     }>;

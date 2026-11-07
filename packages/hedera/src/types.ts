@@ -25,7 +25,10 @@ export interface X402Challenge {
 }
 
 export type PaymentExecutionStatus =
+  | "PENDING"
+  | "MOCKED"
   | "SETTLED"
+  | "VERIFIED"
   | "REJECTED_POLICY"
   | "FAILED_EXECUTION"
   | "VERIFICATION_PENDING"

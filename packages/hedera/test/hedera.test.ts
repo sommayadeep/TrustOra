@@ -14,7 +14,7 @@ describe("Hedera x402 Agent Payments Suite", () => {
     network: "hedera:testnet",
     asset: "0.0.0",
     recipient: "0.0.482910",
-    amountHbar: 2.0,
+    amountHbar: 0.5,
     resourceId: "code-audit-service",
   };
 
@@ -76,31 +76,38 @@ describe("Hedera x402 Agent Payments Suite", () => {
       assert.match(res.reason || "", /Asset "0.0.999" is not native HBAR/);
     });
 
-    test("enforces per-transaction payment cap (max 5 HBAR)", () => {
+    test("enforces per-transaction payment cap (max 1 HBAR)", () => {
       const engine = new AgentPolicyEngine();
       const res = engine.evaluateChallenge(
-        { ...validChallenge, amountHbar: 6.5 },
+        { ...validChallenge, amountHbar: 1.1 },
         "audit.trustora.network"
       );
       assert.equal(res.allowed, false);
       assert.match(res.reason || "", /exceeds maximum per-transaction cap/);
     });
 
-    test("enforces daily cumulative budget ceiling (max 25 HBAR)", () => {
+    test("enforces daily cumulative budget ceiling (max 5 HBAR)", () => {
       const engine = new AgentPolicyEngine();
-      // Record 5 payments of 4.5 HBAR each (total 22.5 HBAR)
-      for (let i = 0; i < 5; i++) {
-        engine.recordSpend(4.5);
+      // Record valid payments totaling 4.5 HBAR.
+      for (const amount of [1, 1, 1, 1, 0.5]) {
+        engine.recordSpend(amount);
       }
-      assert.equal(engine.getDailySpend(), 22.5);
+      assert.equal(engine.getDailySpend(), 4.5);
 
-      // Attempting another 3.5 HBAR payment (22.5 + 3.5 = 26 > 25) must fail
+      // The next valid-sized payment would exceed the 5 HBAR daily limit.
       const res = engine.evaluateChallenge(
-        { ...validChallenge, amountHbar: 3.5 },
+        { ...validChallenge, amountHbar: 0.6 },
         "audit.trustora.network"
       );
       assert.equal(res.allowed, false);
       assert.match(res.reason || "", /exceed daily budget ceiling/);
+    });
+
+    test("custom config cannot raise the reviewed payment or daily caps", () => {
+      const engine = new AgentPolicyEngine({ maxPaymentTinybars: 9_000_000_000n, maxDailyBudgetTinybars: 90_000_000_000n });
+      assert.equal(engine.getPolicy().maxPaymentTinybars, 100_000_000n);
+      assert.equal(engine.getPolicy().maxDailyBudgetTinybars, 500_000_000n);
+      assert.equal(engine.evaluateChallenge({ ...validChallenge, amountHbar: 1.01 }, "audit.trustora.network").allowed, false);
     });
   });
 

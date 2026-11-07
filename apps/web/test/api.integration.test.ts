@@ -135,6 +135,10 @@ before(async () => {
   routes.invite = await import(`${p}/projects/[id]/invite/route`);
   routes.accept = await import(`${p}/projects/[id]/agreements/accept/route`);
   routes.register = await import(`${p}/projects/[id]/register/route`);
+  routes.agentPayments = await import(`${p}/agent-payments/route`);
+  routes.agentService = await import(`${p}/agent-services/[serviceId]/route`);
+  routes.agentReconcile = await import(`${p}/agent-payments/reconcile/route`);
+  routes.publicProof = await import(`${p}/public/prooftrack/route`);
   for (const a of ["register", "fund", "submit", "release", "dispute", "refund", "revision", "resolve", "evaluate"]) {
     routes[`m_${a}`] = await import(`${p}/projects/[id]/milestones/[milestoneId]/${a}/route`);
   }
@@ -154,7 +158,7 @@ test("every protected route rejects unauthenticated requests with 401", async ()
   const checks: Array<[string, "GET" | "POST"]> = [
     ["projects", "GET"], ["projects", "POST"], ["project", "GET"], ["invite", "POST"], ["accept", "POST"], ["register", "POST"],
     ["m_register", "POST"], ["m_fund", "POST"], ["m_submit", "POST"], ["m_release", "POST"], ["m_dispute", "POST"],
-    ["m_refund", "POST"], ["m_revision", "POST"], ["m_resolve", "POST"], ["m_evaluate", "POST"], ["logout", "POST"],
+    ["m_refund", "POST"], ["m_revision", "POST"], ["m_resolve", "POST"], ["m_evaluate", "POST"], ["agentPayments", "GET"], ["logout", "POST"],
   ];
   for (const [key, method] of checks) {
     const r = await call(key, { method, params: P, body: { txHash: "0x" + "ab".repeat(32), role: "CLIENT", clientAddress: client.address } });
@@ -241,6 +245,88 @@ test("registration role is signed, one-wallet-only, and concurrent creation is a
   const results = await Promise.all([registerOnce(), registerOnce()]);
   assert.deepEqual(results.map((r) => r.status).sort((a, b) => a - b), [200, 200]);
   assert.equal((await db.user.findUnique({ where: { walletAddress: racing.address.toLowerCase() } }))?.role, "FREELANCER");
+});
+
+test("agent payment history is private to the wallet session that requested it", async () => {
+  await db.agentPayment.createMany({ data: [
+    { id: "payment-client", idempotencyKey: "history-client", requestedByAddress: client.address.toLowerCase(), serviceName: "Client service", providerAccount: "0.0.7", amountTinybars: "10000000", status: "VERIFIED", policyDecision: "MIRROR_VERIFIED" },
+    { id: "payment-freelancer", idempotencyKey: "history-freelancer", requestedByAddress: freelancer.address.toLowerCase(), serviceName: "Freelancer service", providerAccount: "0.0.8", amountTinybars: "20000000", status: "PENDING", policyDecision: "RESERVED" },
+  ] });
+  const clientHistory = await call("agentPayments", { method: "GET", cookie: cookieClient });
+  const freelancerHistory = await call("agentPayments", { method: "GET", cookie: cookieFreelancer });
+  assert.deepEqual(clientHistory.json.payments.map((p: any) => p.id), ["payment-client"]);
+  assert.deepEqual(freelancerHistory.json.payments.map((p: any) => p.id), ["payment-freelancer"]);
+});
+
+test("x402 service advertises 402 requirements but refuses signed payment payloads without explicit consent", async () => {
+  const oldRecipient = process.env.HEDERA_SERVICE_RECIPIENT;
+  const oldBaseUrl = process.env.TRUSTORA_SERVICE_BASE_URL;
+  process.env.HEDERA_SERVICE_RECIPIENT = "0.0.482910";
+  process.env.TRUSTORA_SERVICE_BASE_URL = `http://${HOST}`;
+  const before = await db.agentPayment.count();
+  try {
+    const challengeReq = new Request(`http://${HOST}/api/agent-services/security-scan`, {
+      method: "POST",
+      headers: { cookie: cookieClient, "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const challenge = await routes.agentService.POST(challengeReq, { params: Promise.resolve({ serviceId: "security-scan" }) });
+    assert.equal(challenge.status, 402);
+    assert.ok(challenge.headers.get("PAYMENT-REQUIRED"));
+
+    const noConsentReq = new Request(`http://${HOST}/api/agent-services/security-scan`, {
+      method: "POST",
+      headers: { cookie: cookieClient, "content-type": "application/json", "PAYMENT-SIGNATURE": "not-decoded-without-consent" },
+      body: JSON.stringify({ consent: false }),
+    });
+    const denied = await routes.agentService.POST(noConsentReq, { params: Promise.resolve({ serviceId: "security-scan" }) });
+    assert.equal(denied.status, 400);
+    assert.equal((await denied.json()).status, "REJECTED_POLICY");
+    assert.equal(await db.agentPayment.count(), before, "no reservation or settlement occurs without explicit consent");
+  } finally {
+    if (oldRecipient === undefined) delete process.env.HEDERA_SERVICE_RECIPIENT; else process.env.HEDERA_SERVICE_RECIPIENT = oldRecipient;
+    if (oldBaseUrl === undefined) delete process.env.TRUSTORA_SERVICE_BASE_URL; else process.env.TRUSTORA_SERVICE_BASE_URL = oldBaseUrl;
+  }
+});
+
+test("persistent x402 reservation rejects duplicates and enforces the rolling daily ceiling", async () => {
+  const { reserveHederaSpend } = await import("../src/lib/hedera-ledger");
+  await db.agentPayment.deleteMany({ where: { requestedByAddress: stranger.address.toLowerCase() } });
+  assert.deepEqual(await reserveHederaSpend(450_000_000n, "mock-reservation-1", stranger.address), { allowed: true });
+  assert.deepEqual(await reserveHederaSpend(10_000_000n, "mock-reservation-1", stranger.address), { allowed: false, reason: "DUPLICATE_PAYMENT" });
+  assert.deepEqual(await reserveHederaSpend(60_000_000n, "mock-reservation-2", stranger.address), { allowed: false, reason: "DAILY_BUDGET_EXCEEDED" });
+  await db.agentPayment.deleteMany({ where: { requestedByAddress: stranger.address.toLowerCase() } });
+});
+
+test("autonomous agent wallet budget is shared across authenticated requesters", async () => {
+  const { reserveHederaSpend } = await import("../src/lib/hedera-ledger");
+  await db.agentPayment.deleteMany({ where: { idempotencyKey: { in: ["mock-global-wallet-spend", "mock-global-wallet-overrun"] } } });
+  assert.deepEqual(await reserveHederaSpend(450_000_000n, "mock-global-wallet-spend", stranger.address, "GLOBAL"), { allowed: true });
+  assert.deepEqual(await reserveHederaSpend(60_000_000n, "mock-global-wallet-overrun", client.address, "GLOBAL"), { allowed: false, reason: "DAILY_BUDGET_EXCEEDED" });
+  await db.agentPayment.deleteMany({ where: { idempotencyKey: { in: ["mock-global-wallet-spend", "mock-global-wallet-overrun"] } } });
+});
+
+test("pending facilitator settlement reconciles to Mirror Node verified and executes stored scan", async () => {
+  const txId = "0.0.7@1700000000.000000000";
+  const payment = await db.agentPayment.create({ data: {
+    idempotencyKey: "mock-reconcile-verified", requestedByAddress: client.address.toLowerCase(), payerAccount: "0.0.7", projectId: null,
+    serviceName: "TRUSTORA Security Scan", providerAccount: "0.0.482910", amountTinybars: "10000000", txId,
+    status: "VERIFICATION_PENDING", policyDecision: "NOT_FOUND_YET", serviceInputJson: JSON.stringify({ "src/a.ts": "eval(input)" }),
+  } });
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({ transactions: [{
+    transaction_id: "0.0.7-1700000000-000000000", result: "SUCCESS", name: "CRYPTOTRANSFER", nonce: 0,
+    consensus_timestamp: "1700000000.000000000", transfers: [{ account: "0.0.7", amount: -10000000 }, { account: "0.0.482910", amount: 10000000 }],
+  }] }), { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+  try {
+    const req = new Request(`http://${HOST}/api/agent-payments/reconcile`, { method: "POST", headers: { cookie: cookieClient } });
+    const response = await routes.agentReconcile.POST(req);
+    const result = await response.json();
+    assert.equal(result.updates.find((u: any) => u.id === payment.id)?.status, "VERIFIED");
+    const persisted = await db.agentPayment.findUniqueOrThrow({ where: { id: payment.id } });
+    assert.equal(persisted.status, "VERIFIED");
+    assert.equal(JSON.parse(persisted.serviceResultJson!).findings[0].ruleId, "JS-EVAL");
+  } finally { globalThis.fetch = previousFetch; await db.agentPayment.delete({ where: { id: payment.id } }); }
 });
 
 test("create project: client is the session wallet, never the request body", async () => {
@@ -473,6 +559,7 @@ test("submit: off-chain step does not change state; on-chain step must anchor th
 
 test("evaluate: client-only, explicit consent, honest UNABLE_TO_ASSESS without a model, never touches escrow", async () => {
   const P = { id: projectId, milestoneId };
+  const paymentsBefore = await db.agentPayment.count();
   assert.equal((await call("m_evaluate", { cookie: cookieFreelancer, params: P, body: { aiConsent: true } })).status, 403);
   assert.equal((await call("m_evaluate", { cookie: cookieClient, params: P, body: {} })).json.code, "CONSENT_REQUIRED");
   assert.equal((await call("m_evaluate", { cookie: cookieClient, params: P, body: { aiConsent: "yes" } })).status, 400);
@@ -498,7 +585,123 @@ test("evaluate: client-only, explicit consent, honest UNABLE_TO_ASSESS without a
   assert.equal(r.json.report.advisoryNotice, "ADVISORY_ONLY_CANNOT_RELEASE_FUNDS");
   assert.equal(await mstate(), "SUBMITTED", "evaluation never moves escrow state");
   assert.equal(await db.proofTrackEventRecord.count({ where: { projectId, ecosystem: "ZERO_G" } }), 0);
-  assert.equal(await db.agentPayment.count(), 0, "no simulated Hedera payment is recorded");
+  assert.equal(await db.agentPayment.count(), paymentsBefore, "evaluation does not create a simulated Hedera payment");
+});
+
+test("evaluate: mocked Private Computer Router result persists and is linked in ProofTrack", async () => {
+  const saved = {
+    apiKey: process.env.ZG_ROUTER_API_KEY,
+    baseUrl: process.env.ZG_ROUTER_BASE_URL,
+    model: process.env.ZG_ROUTER_MODEL,
+    trustMode: process.env.ZG_ROUTER_TRUST_MODE,
+    fetch: globalThis.fetch,
+  };
+  const agreement = await db.agreementVersion.findFirstOrThrow({ where: { projectId }, orderBy: { versionNumber: "desc" } });
+  const criteria = JSON.parse(agreement.criteriaJson) as Array<{ id: string; text: string }>;
+  process.env.ZG_ROUTER_API_KEY = "sk-MOCK-ONLY";
+  process.env.ZG_ROUTER_BASE_URL = "https://router-api.0g.ai/v1";
+  process.env.ZG_ROUTER_MODEL = "glm-5.3";
+  process.env.ZG_ROUTER_TRUST_MODE = "private";
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    assert.match(String(input), /router-api\.0g\.ai\/v1\/chat\/completions/);
+    const request = JSON.parse(String(init?.body)) as { model: string; verify_tee: boolean; messages: Array<{ role: string; content: string }> };
+    assert.equal(request.model, "glm-5.3");
+    assert.equal(request.verify_tee, true);
+    assert.equal(request.messages.length, 2);
+    const body = {
+      id: "chatcmpl-mock-evaluation",
+      model: "glm-5.3",
+      choices: [{
+        message: {
+          role: "assistant",
+          content: JSON.stringify({
+            results: criteria.map((c) => ({ id: c.id, verdict: "PASS", evidence: "Mocked Router evidence" })),
+            limitations: ["Mocked provider response; manual review remains required."],
+          }),
+          reasoning_content: "Optional reasoning metadata",
+        },
+        finish_reason: "stop",
+      }],
+      usage: { completion_tokens_details: { reasoning_tokens: 4 } },
+      x_0g_trace: { request_id: "chatcmpl-mock-evaluation", provider: "mock-private-provider" },
+    };
+    return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+  }) as typeof fetch;
+
+  try {
+    const beforeState = await mstate();
+    const response = await call("m_evaluate", { cookie: cookieClient, params: { id: projectId, milestoneId }, body: { aiConsent: true } });
+    assert.equal(response.status, 200, JSON.stringify(response.json));
+    assert.equal(response.json.advisoryOnly, true);
+    assert.equal(response.json.modelCalled, true);
+    assert.equal(response.json.report.overallVerdict, "PASS");
+    assert.equal(response.json.report.inferenceRequestId, "chatcmpl-mock-evaluation");
+    assert.equal(response.json.report.modelId, "glm-5.3");
+    assert.equal(response.json.report.teeVerified, null);
+    assert.equal(response.json.report.teeVerifiedBy, null);
+    assert.equal(await mstate(), beforeState, "evaluation does not change escrow state");
+
+    const stored = await db.evaluationReport.findUnique({ where: { id: response.json.report.id } });
+    assert.equal(stored?.submissionId, (await db.submission.findFirstOrThrow({ where: { milestoneId, anchorTxHash: { not: null } } })).id);
+    assert.equal(stored?.inferenceRequestId, "chatcmpl-mock-evaluation");
+    assert.equal(stored?.modelId, "glm-5.3");
+    const evidence = await db.proofTrackEventRecord.findFirst({
+      where: { projectId, ecosystem: "ZERO_G", referenceValue: "chatcmpl-mock-evaluation" },
+    });
+    assert.deepEqual([evidence?.referenceType, evidence?.verificationStatus], ["INFERENCE_REQUEST_ID", "PENDING"]);
+
+    const repeated = await call("m_evaluate", { cookie: cookieClient, params: { id: projectId, milestoneId }, body: { aiConsent: true } });
+    assert.equal(repeated.status, 200);
+    assert.equal(repeated.json.reused, true);
+    assert.equal(await db.evaluationReport.count({ where: { submissionId: stored!.submissionId, inferenceRequestId: "chatcmpl-mock-evaluation" } }), 1);
+  } finally {
+    if (saved.apiKey === undefined) delete process.env.ZG_ROUTER_API_KEY; else process.env.ZG_ROUTER_API_KEY = saved.apiKey;
+    if (saved.baseUrl === undefined) delete process.env.ZG_ROUTER_BASE_URL; else process.env.ZG_ROUTER_BASE_URL = saved.baseUrl;
+    if (saved.model === undefined) delete process.env.ZG_ROUTER_MODEL; else process.env.ZG_ROUTER_MODEL = saved.model;
+    if (saved.trustMode === undefined) delete process.env.ZG_ROUTER_TRUST_MODE; else process.env.ZG_ROUTER_TRUST_MODE = saved.trustMode;
+    globalThis.fetch = saved.fetch;
+  }
+});
+
+test("public ProofTrack route is read-only, wallet-free, evidence-complete and privacy-filtered", async () => {
+  const txId = "0.0.7@1700000000.000000000";
+  const payment = await db.agentPayment.create({ data: {
+    idempotencyKey: "public-prooftrack-mock-payment", requestedByAddress: client.address.toLowerCase(), payerAccount: "0.0.7", projectId,
+    serviceName: "TRUSTORA Security Scan", providerAccount: "0.0.482910", amountTinybars: "10000000", txId, status: "VERIFIED",
+    policyDecision: "MIRROR_NODE_VERIFIED", serviceResultJson: JSON.stringify({ filesScanned: 1, findings: [{ file: "private/path.ts" }], summary: { high: 1, medium: 2 } }),
+  } });
+  try {
+    const projectResponse = await routes.publicProof.GET(new Request(`http://${HOST}/api/public/prooftrack?project=${encodeURIComponent(projectId)}`));
+    assert.equal(projectResponse.status, 200);
+    const projectBody = await projectResponse.json();
+    const bundle = projectBody.projects[0];
+    assert.ok(bundle.evidence.arc.some((e: any) => e.verificationStatus === "VERIFIED"));
+    assert.ok(bundle.evidence.zeroG.some((e: any) => e.requestId === "chatcmpl-mock-evaluation" && e.status === "PENDING"));
+    assert.equal(bundle.evidence.hedera[0].verificationStatus, "VERIFIED");
+    assert.equal(bundle.evidence.hedera[0].scan.high, 1);
+    const publicJson = JSON.stringify(projectBody);
+    assert.equal(publicJson.includes(client.address.toLowerCase()), false);
+    assert.equal(publicJson.includes("private/path.ts"), false);
+    assert.equal(publicJson.includes("description"), false);
+
+    const txResponse = await routes.publicProof.GET(new Request(`http://${HOST}/api/public/prooftrack?transaction=${encodeURIComponent(txId)}`));
+    assert.equal(txResponse.status, 200);
+    assert.equal((await txResponse.json()).projects[0].project.id, projectId);
+    const invalid = await routes.publicProof.GET(new Request(`http://${HOST}/api/public/prooftrack?transaction=${encodeURIComponent("not-a-transaction")}`));
+    assert.equal(invalid.status, 400);
+    const invalidProject = await routes.publicProof.GET(new Request(`http://${HOST}/api/public/prooftrack?project=${encodeURIComponent("private-project-id")}`));
+    assert.equal(invalidProject.status, 400);
+    const noKind = await routes.publicProof.GET(new Request(`http://${HOST}/api/public/prooftrack`));
+    assert.equal(noKind.status, 400);
+    const arcTx = (await db.project.findUniqueOrThrow({ where: { id: projectId }, select: { registerTxHash: true } })).registerTxHash!;
+    const arcLookup = await routes.publicProof.GET(new Request(`http://${HOST}/api/public/prooftrack?transaction=${encodeURIComponent(arcTx)}`));
+    assert.equal(arcLookup.status, 200);
+    const unpublishedId = "TRU-PROJ-2026-9999998";
+    await db.project.create({ data: { id: unpublishedId, title: "Private", description: "Secret description", clientAddress: client.address, budgetUsdc: "1" } });
+    const unpublished = await routes.publicProof.GET(new Request(`http://${HOST}/api/public/prooftrack?project=${unpublishedId}`));
+    assert.equal(unpublished.status, 404);
+    await db.project.delete({ where: { id: unpublishedId } });
+  } finally { await db.agentPayment.delete({ where: { id: payment.id } }); }
 });
 
 test("revision then resubmit, then dispute and refund paths are role- and chain-gated", async () => {

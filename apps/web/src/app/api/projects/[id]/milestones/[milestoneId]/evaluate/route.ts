@@ -57,6 +57,13 @@ export async function POST(
     if (!submission) {
       return NextResponse.json({ success: false, error: "No on-chain anchored submission found to evaluate" }, { status: 409 });
     }
+    const previous = await prisma.evaluationReport.findFirst({
+      where: { submissionId: submission.id, inferenceRequestId: { not: null } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (previous) {
+      return NextResponse.json({ success: true, advisoryOnly: true, report: previous, modelCalled: true, reused: true });
+    }
     const content = submission.content ?? "";
     if (!content || crypto.createHash("sha256").update(content).digest("hex") !== submission.deliverableHash) {
       return NextResponse.json(

@@ -121,7 +121,7 @@ Status:
 
 Implemented:
 
-- 0G Router adapter and optional broker fallback.
+- 0G Private Computer Router adapter for qualifying evaluations (the broker adapter remains legacy tooling only).
 - Explicit evaluation consent.
 - Criteria-bound structured evaluation.
 - Verdicts: `PASS`, `PARTIAL`, `FAIL`, `UNABLE_TO_ASSESS`.
@@ -137,7 +137,7 @@ Status:
 
 To make 0G demonstrable:
 
-1. Obtain an authorized 0G Testnet Router credential.
+1. Obtain an authorized 0G Router credential for the configured environment.
 2. Configure the variables listed below in an ignored local environment file.
 3. Restart the Next.js server.
 4. Run an evaluation against a real deliverable with explicit consent.
@@ -150,29 +150,27 @@ To make 0G demonstrable:
 
 Implemented primitives:
 
-- x402-related package dependencies.
+- Official `@x402/core` and `@x402/hedera` v2 exact client/facilitator wiring.
+- Service discovery and standard HTTP 402 payment-required responses.
+- Agent-side Hedera payment-payload creation (testnet, HBAR, tinybars).
 - Integer tinybar conversion and validation.
 - Spending policy helpers.
-- Persistent reservation/accounting primitive.
-- Idempotency-oriented payment records.
+- Persistent budget reservations, idempotency, and payment lifecycle records.
 - Mirror Node settlement verification helpers.
 - Hashscan URL helpers.
+- ProofTrack settlement correlation when a project ID is supplied.
+- Authenticated payment-history API and frontend status/history display.
 - Unit tests with mocked facilitator/Mirror Node responses.
 
-Remaining work before claiming live Hedera:
+The web integration is deliberately fail-closed:
 
-1. Implement the TRUSTORA-operated scanning/payment service endpoint.
-2. Implement the x402 v2 exact-payment request/challenge flow.
-3. Integrate a real Hedera x402 facilitator.
-4. Require explicit user consent before every payment.
-5. Persist daily spending limits and reservations in the production database.
-6. Make concurrent reservations atomic under the selected production database.
-7. Submit only exact integer tinybar amounts.
-8. Verify settlement through the Hedera Mirror Node.
-9. Store only verified transaction IDs and settlement evidence.
-10. Add an end-to-end Testnet test with a real facilitator in an isolated test account.
+1. `/api/agent-services` exposes only configured services.
+2. A protected service returns an x402 v2 `PAYMENT-REQUIRED` challenge.
+3. Missing facilitator configuration returns `NOT_CONFIGURED`; it never simulates success.
+4. Policy, persistent budget reservation, facilitator verification, settlement, and Mirror Node verification run in that order.
+5. ProofTrack records a facilitator ID only when the facilitator returns a valid Hedera transaction ID.
 
-Status: **partial primitives and tests; live facilitator-backed settlement is not implemented in the web application.**
+Status: **x402 v2 application workflow implemented and mocked-testable; genuine Hedera settlement still requires funded testnet accounts and explicit approval.**
 
 ## ProofTrack
 
@@ -267,9 +265,9 @@ Configure these only in an ignored local/deployment environment:
 
 SQLite is currently fixed by `apps/web/prisma/schema.prisma`; no `DATABASE_URL` is currently used by the web app.
 
-### 0G broker fallback
+### 0G broker adapter (legacy, non-qualifying)
 
-Only if the broker path is intentionally used:
+The broker path is retained for development and direct SDK experiments. It is not used by the milestone evaluation route and does not qualify as TRUSTORA's Private Computer evaluation.
 
 - `ZG_PRIVATE_KEY`
 - `ZG_RPC_URL`
@@ -289,12 +287,15 @@ The web server must never receive `DEPLOYER_PRIVATE_KEY`.
 
 ### Hedera
 
-The current web application does not have a completed live Hedera payment configuration. Package-level agent primitives may read:
+The web server x402 flow reads these variables only from server-side environment configuration:
 
-- `HEDERA_ACCOUNT_ID`
-- `HEDERA_PRIVATE_KEY`
+- `HEDERA_FACILITATOR_ACCOUNT_ID`
+- `HEDERA_FACILITATOR_PRIVATE_KEY`
+- `HEDERA_SERVICE_RECIPIENT`
+- `HEDERA_SECURITY_SCAN_TINYBARS`
+- optional `HEDERA_ALLOWED_PROVIDERS`
 
-These are not sufficient to enable live x402 settlement. A facilitator endpoint, consent flow, persistent production ledger, and Mirror Node verification must be completed first. Never place `HEDERA_PRIVATE_KEY` in frontend-exposed variables.
+These settings do not prove settlement. A funded Hedera Testnet facilitator/client and explicit operator approval are still required for a live run. Never place any Hedera private key in frontend-exposed variables.
 
 ## Testing and validation
 
@@ -367,11 +368,12 @@ Open the explorer links for the verified project, milestone, funding, deliverabl
 - [x] Exact financial units and authorization checks
 - [x] Automated tests, build, and typecheck
 
-### Complete before claiming the corresponding integration
+### Complete before claiming the corresponding live integration
 
-- [ ] Capture a genuine 0G Router evaluation with a real request ID
-- [ ] Connect a real Hedera x402 facilitator
-- [ ] Complete Hedera consent, payment, idempotency, and Mirror Node verification
+- [ ] Capture a genuine 0G Router milestone evaluation with a real request ID (requires a submitted and anchored milestone)
+- [x] Connect the official Hedera x402 v2 client/facilitator APIs
+- [x] Complete mocked Hedera consent, payment, idempotency, policy, and Mirror Node verification paths
+- [ ] Fund isolated Hedera Testnet accounts and demonstrate a genuine settlement
 - [ ] Add a public ProofTrack verification page
 - [ ] Replace local SQLite with managed PostgreSQL for production concurrency
 - [ ] Configure production origin, secure cookies, trusted proxy, backups, monitoring, and alerts

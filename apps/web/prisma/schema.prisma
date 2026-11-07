@@ -112,6 +112,11 @@ model EvaluationReport {
 model AgentPayment {
   id               String            @id @default(cuid())
   idempotencyKey   String            @unique
+  requestedByAddress String?
+  payerAccount      String?
+  projectId         String?
+  serviceResultJson String?
+  serviceInputJson  String?
   evaluationId     String?
   evaluation       EvaluationReport? @relation(fields: [evaluationId], references: [id], onDelete: SetNull)
   serviceName      String            // e.g. "Security Scanner"

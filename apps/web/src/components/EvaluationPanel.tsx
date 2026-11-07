@@ -31,6 +31,9 @@ export function EvaluationPanel({ evaluation }: { evaluation: Evaluation }) {
         <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${VERDICT_TONE[evaluation.overallVerdict] ?? VERDICT_TONE.UNABLE_TO_ASSESS}`}>
           {evaluation.overallVerdict.replace(/_/g, " ")}
         </span>
+        <span className="rounded-full border border-slate-200 px-2 py-0.5 text-[11px] text-slate-600">
+          {evaluation.inferenceRequestId ? "COMPLETED" : "UNABLE TO ASSESS"}
+        </span>
         <span className="rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[11px] text-slate-600">Advisory only · cannot release funds</span>
       </div>
 
@@ -65,10 +68,14 @@ export function EvaluationPanel({ evaluation }: { evaluation: Evaluation }) {
         {modelRan && (
           <>
             <div><dt className="inline">0G request ID: </dt><dd className="inline font-mono">{evaluation.inferenceRequestId}</dd></div>
+            <div><dt className="inline">Provider: </dt><dd className="inline font-mono">{evaluation.providerAddress ?? "router-selected"}</dd></div>
+            <div><dt className="inline">Model: </dt><dd className="inline">{evaluation.modelId ?? "not reported"}</dd></div>
             <div><dt className="inline">TEE: </dt><dd className="inline">{evaluation.teeVerified === null ? "not reported" : evaluation.teeVerified ? "reported verified by router (not independently checked)" : "reported not verified"}</dd></div>
           </>
         )}
+        <div><dt className="inline">Evaluated: </dt><dd className="inline">{new Date(evaluation.createdAt).toLocaleString()}</dd></div>
       </dl>
+      <p className="mt-3 text-xs text-slate-500">Manual client review is required. Only the client can authorize escrow release.</p>
     </div>
   );
 }

@@ -3,7 +3,7 @@
  * CONFIGURED means "settings are present", never "verified working": reachability is proven only by a real
  * transaction or inference. The UI uses this to disable features instead of pretending they work.
  */
-import { routerConfigFromEnv } from "../../../../packages/og/src/index";
+import { privateComputerConfigFromEnv } from "../../../../packages/og/src/index";
 
 export type Availability = "CONFIGURED" | "NOT_CONFIGURED" | "NOT_IMPLEMENTED" | "BLOCKED";
 
@@ -29,7 +29,7 @@ export function getSystemStatus(env: Record<string, string | undefined> = proces
 
   let zeroG: IntegrationStatus;
   try {
-    if (routerConfigFromEnv(env)) {
+    if (privateComputerConfigFromEnv(env)) {
       zeroG = { status: "CONFIGURED", detail: "A 0G router key is configured. Evaluations are advisory and return UNABLE_TO_ASSESS if the provider is unreachable." };
     } else if (env.ZG_PRIVATE_KEY?.trim()) {
       zeroG = { status: "NOT_CONFIGURED", detail: "Only the 0G broker fallback is set, which needs an SDK that is not installed in this build. Evaluations will report UNABLE_TO_ASSESS." };
@@ -40,9 +40,13 @@ export function getSystemStatus(env: Record<string, string | undefined> = proces
     zeroG = { status: "BLOCKED", detail: "The configured 0G endpoint was refused (TRUSTORA is testnet-only), so AI evaluation is disabled." };
   }
 
-  const hedera: IntegrationStatus = {
-    status: "NOT_IMPLEMENTED",
-    detail: "The Hedera x402 settlement flow is not wired into the application. No payment is attempted or reported.",
-  };
+  const facilitatorConfigured = Boolean(
+    env.HEDERA_FACILITATOR_ACCOUNT_ID?.trim() &&
+    env.HEDERA_FACILITATOR_PRIVATE_KEY?.trim() &&
+    env.HEDERA_SERVICE_RECIPIENT?.trim(),
+  );
+  const hedera: IntegrationStatus = facilitatorConfigured
+    ? { status: "CONFIGURED", detail: "Hedera x402 testnet service and facilitator settings are present. No settlement is considered verified until Mirror Node evidence is returned." }
+    : { status: "NOT_CONFIGURED", detail: "Hedera x402 requires a configured testnet facilitator, service recipient, and explicit user consent. No payment is attempted." };
   return { arcEscrow, zeroG, hedera };
 }

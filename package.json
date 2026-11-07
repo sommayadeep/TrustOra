@@ -8,9 +8,10 @@
     "apps/*"
   ],
   "scripts": {
-    "test": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node node_modules/tsx/dist/cli.mjs --test packages/evaluation/test/*.test.ts packages/og/test/*.test.ts packages/hedera/test/*.test.ts packages/prooftrack/test/*.test.ts packages/contracts/test/arcConfig.test.ts packages/contracts/test/escrowAbi.test.ts packages/contracts/test/deployPreflight.test.ts apps/web/test/*.test.ts && (cd packages/contracts && npx hardhat test test/TrustoraEscrow.test.js)",
-    "test:unit": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node node_modules/tsx/dist/cli.mjs --test packages/evaluation/test/*.test.ts packages/og/test/*.test.ts packages/hedera/test/*.test.ts packages/prooftrack/test/*.test.ts packages/contracts/test/arcConfig.test.ts packages/contracts/test/escrowAbi.test.ts packages/contracts/test/deployPreflight.test.ts apps/web/test/*.test.ts",
+    "test": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node node_modules/tsx/dist/cli.mjs --test packages/evaluation/test/*.test.ts packages/og/test/*.test.ts packages/hedera/test/*.test.ts packages/prooftrack/test/*.test.ts packages/contracts/test/*.test.ts apps/web/test/*.test.ts && (cd packages/contracts && npx hardhat test test/TrustoraEscrow.test.js)",
+    "test:unit": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node node_modules/tsx/dist/cli.mjs --test packages/evaluation/test/*.test.ts packages/og/test/*.test.ts packages/hedera/test/*.test.ts packages/prooftrack/test/*.test.ts packages/contracts/test/*.test.ts apps/web/test/*.test.ts",
     "test:contracts": "cd packages/contracts && npx hardhat test test/TrustoraEscrow.test.js",
+    "preflight:hedera": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node node_modules/tsx/dist/cli.mjs packages/hedera/scripts/hedera-preflight.ts",
     "compile:contracts": "cd packages/contracts && npx hardhat compile",
     "typecheck": "tsc --noEmit -p apps/web/tsconfig.json",
     "lint": "npm run typecheck",

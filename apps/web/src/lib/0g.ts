@@ -6,7 +6,7 @@ import {
   sha256Hex,
 } from "../../../../packages/evaluation/src/index";
 import type { EvaluationReport, Verdict } from "../../../../packages/evaluation/src/index";
-import { createOgClientFromEnv } from "../../../../packages/og/src/index";
+import { createPrivateComputerClientFromEnv } from "../../../../packages/og/src/index";
 import type { OgChatClient } from "../../../../packages/og/src/index";
 
 /** The most deliverable text the evaluator can read. Submissions are capped to this so nothing goes unassessed. */
@@ -25,7 +25,7 @@ export interface RunEvaluationParams {
 }
 
 /**
- * Advisory evaluation through the 0G Router / Private Computer.
+ * Advisory evaluation through the 0G Private Computer Router.
  *
  * Honesty rules enforced here and in the evaluator:
  *  - No model reachable, refused, or output invalid  -> UNABLE_TO_ASSESS (never PASS), no request ID.
@@ -53,7 +53,10 @@ export async function run0GEvaluation(
   }
 
   try {
-    const client = deps.client ?? createOgClientFromEnv(process.env).client;
+    const client = deps.client ?? createPrivateComputerClientFromEnv(process.env);
+    if (!client) {
+      return unableToAssess(params, criteria, "0G Private Computer is not configured; set ZG_ROUTER_API_KEY on the server.");
+    }
     const outcome = await new Evaluator({ client }).evaluate({
       criteriaVersion: params.criteriaVersion,
       criteria,

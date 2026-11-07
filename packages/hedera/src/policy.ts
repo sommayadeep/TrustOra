@@ -4,11 +4,11 @@
  */
 
 import { HederaPaymentPolicy, X402Challenge } from "./types";
-import { formatTinybars, parseHbarToTinybars } from "./units";
+import { formatTinybars, MAX_DAILY_TINYBARS, MAX_PAYMENT_TINYBARS, parseHbarToTinybars } from "./units";
 
 export const DEFAULT_HEDERA_POLICY: HederaPaymentPolicy = {
-  maxPaymentTinybars: 500_000_000n,
-  maxDailyBudgetTinybars: 2_500_000_000n,
+  maxPaymentTinybars: MAX_PAYMENT_TINYBARS,
+  maxDailyBudgetTinybars: MAX_DAILY_TINYBARS,
   allowedProviders: [
     "0.0.482910",              // Official Trustora Code Auditor Testnet Account
     "0.0.482911",              // Official Trustora Security Scanner Testnet Account
@@ -26,6 +26,9 @@ export class AgentPolicyEngine {
 
   constructor(customPolicy?: Partial<HederaPaymentPolicy>) {
     this.policy = { ...DEFAULT_HEDERA_POLICY, ...customPolicy };
+    // Local/service configuration may tighten these caps, never raise the reviewed defaults.
+    if (this.policy.maxPaymentTinybars > MAX_PAYMENT_TINYBARS) this.policy.maxPaymentTinybars = MAX_PAYMENT_TINYBARS;
+    if (this.policy.maxDailyBudgetTinybars > MAX_DAILY_TINYBARS) this.policy.maxDailyBudgetTinybars = MAX_DAILY_TINYBARS;
   }
 
   /**

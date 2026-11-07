@@ -1,0 +1,126 @@
+TRUSTORA — Windows clone-and-run requirements
+================================================
+
+This is a human-readable setup guide, not a pip requirements file. TRUSTORA is
+an npm/Node.js monorepo; do not run `pip install -r requirements.txt`.
+
+REQUIREMENTS
+------------
+- Windows 10 or 11, 64-bit.
+- Git for Windows.
+- Node.js 22 LTS (22.5 or newer; Node 22 LTS is recommended). The safe SQLite
+  updater uses Node's built-in `node:sqlite` API.
+- npm, included with Node.js. Use the npm version supplied by Node; do not use
+  `npm install` in place of `npm ci` for a reproducible clone install.
+- A modern browser. MetaMask is optional for wallet flows and Arc Testnet demos.
+- Internet access to install npm packages and, when used, reach Arc/0G services.
+- Optional: an editor such as VS Code.
+
+NOT REQUIRED FOR A BASIC LOCAL START
+------------------------------------
+- Python, pip, Docker, PostgreSQL, or a globally installed SQLite server.
+- A blockchain wallet or API credentials just to open the local app.
+- A private key. Never put wallet/deployer private keys in the web app or commit
+  credentials.
+
+WINDOWS SETUP (PowerShell)
+-------------------------
+1. Install Git for Windows and Node.js 22 LTS. Close and reopen PowerShell,
+   then check the installations:
+
+       git --version
+       node --version
+       npm --version
+
+   `node --version` should show v22.x. If `node` is not found, restart the
+   terminal after installing Node.js or repair the PATH setting.
+
+2. Clone the public repository and enter its directory:
+
+       git clone https://github.com/sommayadeep/TrustOra.git
+       cd TrustOra
+
+3. Install the exact dependency versions recorded in the lockfile:
+
+       npm ci
+
+   If this fails, keep the complete error output. Do not delete the lockfile or
+   switch to `npm audit fix --force` as an installation workaround.
+
+4. Generate Prisma's client and preview the safe SQLite schema update:
+
+       npx prisma generate --schema apps/web/prisma/schema.prisma
+       npm run db:update -w @trustora/web
+
+   The updater defaults to a dry run. On a fresh clone it should report the
+   proposed database setup without applying it. Review the output first. If it
+   shows a safe additive plan that you want to apply, stop the app and run:
+
+       npm run db:update:apply -w @trustora/web
+
+   Keep the app's SQLite file local; it is generated runtime data and should not
+   be copied into Git. Do not use `prisma db push --accept-data-loss`.
+
+5. (Optional) Set local web configuration. The app can start without provider
+   credentials; live integrations remain unavailable unless they are genuinely
+   configured. To use the supplied safe template:
+
+       Copy-Item apps/web/.env.example apps/web/.env.local
+
+   Edit only your local, ignored `apps/web/.env.local`. Do not paste secrets
+   into chat, commit them, add them to `NEXT_PUBLIC_*` variables, or put a
+   deployer private key in the web app. The template leaves credentials blank.
+   SQLite path is fixed in the Prisma schema; no `DATABASE_URL` is needed.
+
+6. Start the development server from the repository root:
+
+       npm run dev
+
+   Open http://localhost:3000. Stop with Ctrl+C.
+
+OPTIONAL ARC WALLET DEMO
+------------------------
+- Add Arc Testnet to MetaMask (chain ID 5042002) and use a test wallet funded
+  only with testnet assets.
+- The checked-in deployment record is in
+  `packages/contracts/deployments/arcTestnet.json`. The running app must be
+  configured with the matching `ESCROW_CONTRACT_ADDRESS` in its local server
+  environment before contract interactions can work.
+- A browser wallet and configured address do not make a transaction safe by
+  themselves. Inspect the transaction and network before signing. This guide
+  does not instruct deployment or token approvals.
+
+OPTIONAL VALIDATION
+-------------------
+Run from the repository root:
+
+    npm run compile:contracts
+    npm run test:contracts
+    npm run typecheck
+    npm run build
+
+The repository's `npm test`/`npm run test:unit` scripts currently set an
+environment variable with POSIX shell syntax. They may fail under Windows'
+default npm shell. Run those commands from Git Bash, or use a Windows-compatible
+script adjustment before treating the full suite as validated on Windows.
+
+WHAT A LOCAL RUN DOES NOT PROVIDE
+---------------------------------
+- 0G evaluations return unavailable unless a supported, genuine provider is
+  configured. Never treat mocked tests as live inference.
+- Hedera x402 settlement is not implemented in the app; setting Hedera keys does
+  not enable it.
+- Contract tests use mocks. They do not deploy or broadcast transactions.
+- Local SQLite is for development, not a configured production database.
+
+TROUBLESHOOTING
+---------------
+- `npm ci` errors: confirm Node 22 LTS, internet access, and that you are at the
+  cloned repository root. Keep `package-lock.json` unchanged.
+- Prisma/SQLite errors: confirm Node is v22.x, rerun Prisma generation, and
+  inspect the dry-run output before applying the schema update.
+- Port 3000 in use: stop the other local server using it, then rerun `npm run
+  dev`.
+- Wallet connection errors: confirm MetaMask is installed, unlocked, and set to
+  Arc Testnet; check the app's configured contract address. Do not share seed
+  phrases or private keys when asking for help.

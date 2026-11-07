@@ -1,6 +1,9 @@
-import { ethers, network } from "hardhat";
+import { network } from "hardhat";
+import type { Provider } from "ethers";
+import { Contract } from "ethers";
 import * as fs from "fs";
 import * as path from "path";
+import { fileURLToPath } from "url";
 import { PreflightError, verifyDeployment } from "../src/lib/deployPreflight";
 
 /**
@@ -20,11 +23,15 @@ const ABI = [
 async function main() {
   let escrow = process.env.ESCROW_CONTRACT_ADDRESS?.trim();
   if (!escrow) {
-    const file = path.join(__dirname, "../deployments/arcTestnet.json");
+    const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+    const file = path.join(scriptDir, "../deployments/arcTestnet.json");
     if (fs.existsSync(file)) escrow = JSON.parse(fs.readFileSync(file, "utf8")).escrowContract;
   }
-  const provider = ethers.provider;
-  const at = (a: string) => new ethers.Contract(a, ABI, provider);
+  // Hardhat 3 exposes plugin integrations on a connection, not as top-level exports.
+  // Do not request signers here: this checker is intentionally provider-only and read-only.
+  const { ethers } = await network.connect();
+  const provider: Provider = ethers.provider;
+  const at = (a: string) => new Contract(a, ABI, provider);
   const report = await verifyDeployment({
     escrow,
     reader: {
@@ -35,7 +42,7 @@ async function main() {
       paused: (a) => at(a).paused(),
     },
   });
-  console.log(`Network:   ${network.name} (chain ${report.chainId})`);
+  console.log(`Network:   arcTestnet (chain ${report.chainId})`);
   console.log(`Escrow:    ${report.escrow}`);
   console.log(`USDC:      ${report.usdc}`);
   console.log(`Owner:     ${report.owner} (also the default arbiter and the only account that can pause)`);

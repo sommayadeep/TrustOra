@@ -2,7 +2,7 @@
 
 Only this package knows 0G SDK/HTTP details. Everything else uses `OgChatClient`.
 
-- `src/router.ts` PRIMARY: OpenAI-compatible 0G Private Computer Router (testnet). `verify_tee: true` is sent.
+- `src/router.ts` PRIMARY: OpenAI-compatible 0G Private Computer Router. The verified deployment uses `https://router-api.0g.ai/v1` with `glm-5.3`; `verify_tee: true` is sent.
 - `src/compute.ts` FALLBACK: compute broker SDK, lazy-loaded. Method names UNVERIFIED until a first real run.
 - `src/index.ts` `createOgClientFromEnv(env)` -> `{client, path: "router"|"broker"|"none"}`.
 

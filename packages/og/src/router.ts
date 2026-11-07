@@ -8,14 +8,14 @@ import {
 } from "./types";
 
 export const TESTNET_ROUTER_BASE_URL = "https://router-api-testnet.integratenetwork.work/v1";
-/** Mainnet router host. TRUSTORA is testnet-only: config refuses it. */
+export const DEFAULT_ROUTER_BASE_URL = "https://router-api.0g.ai/v1";
 export const MAINNET_ROUTER_HOST = "router-api.0g.ai";
+export const DEFAULT_ROUTER_MODEL = "glm-5.3";
 
 export interface RouterConfig {
   apiKey: string;
   baseUrl: string;
   model?: string;
-  /** UNVERIFIED header value (e.g. "private"); only sent when explicitly configured. */
   trustMode?: string;
   providerAddress?: string;
   fetchImpl?: typeof fetch;
@@ -23,22 +23,23 @@ export interface RouterConfig {
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 
-function assertNotMainnet(baseUrl: string): void {
+function assertRouterUrl(baseUrl: string): void {
   let host = "";
   try { host = new URL(baseUrl).hostname.toLowerCase(); } catch { throw new OgError("NOT_CONFIGURED", "ZG_ROUTER_BASE_URL is not a valid URL"); }
-  if (host === MAINNET_ROUTER_HOST || host.endsWith(`.${MAINNET_ROUTER_HOST}`)) {
-    throw new OgError("NOT_CONFIGURED", "Refusing 0G mainnet router URL: TRUSTORA is testnet-only");
+  const testnetHost = new URL(TESTNET_ROUTER_BASE_URL).hostname;
+  if (host !== MAINNET_ROUTER_HOST && !host.endsWith(`.${MAINNET_ROUTER_HOST}`) && host !== testnetHost) {
+    throw new OgError("NOT_CONFIGURED", "ZG_ROUTER_BASE_URL must use an official 0G Router host");
   }
 }
 
 export function routerConfigFromEnv(env: Record<string, string | undefined>): RouterConfig | null {
   const apiKey = env.ZG_ROUTER_API_KEY?.trim();
   if (!apiKey) return null;
-  const baseUrl = (env.ZG_ROUTER_BASE_URL?.trim() || TESTNET_ROUTER_BASE_URL).replace(/\/+$/, "");
-  assertNotMainnet(baseUrl);
+  const baseUrl = (env.ZG_ROUTER_BASE_URL?.trim() || DEFAULT_ROUTER_BASE_URL).replace(/\/+$/, "");
+  assertRouterUrl(baseUrl);
   const cfg: RouterConfig = { apiKey, baseUrl };
-  if (env.ZG_ROUTER_MODEL?.trim()) cfg.model = env.ZG_ROUTER_MODEL.trim();
-  if (env.ZG_ROUTER_TRUST_MODE?.trim()) cfg.trustMode = env.ZG_ROUTER_TRUST_MODE.trim();
+  cfg.model = env.ZG_ROUTER_MODEL?.trim() || DEFAULT_ROUTER_MODEL;
+  cfg.trustMode = env.ZG_ROUTER_TRUST_MODE?.trim() || "private";
   if (env.ZG_ROUTER_PROVIDER_ADDRESS?.trim()) cfg.providerAddress = env.ZG_ROUTER_PROVIDER_ADDRESS.trim();
   return cfg;
 }
@@ -52,7 +53,7 @@ export class RouterClient implements OgChatClient {
   private resolvedModel: string | undefined;
 
   constructor(cfg: RouterConfig) {
-    assertNotMainnet(cfg.baseUrl);
+    assertRouterUrl(cfg.baseUrl);
     this.cfg = { ...cfg, baseUrl: cfg.baseUrl.replace(/\/+$/, "") };
     this.fetchImpl = cfg.fetchImpl ?? fetch;
     this.resolvedModel = cfg.model;
@@ -64,7 +65,7 @@ export class RouterClient implements OgChatClient {
 
   private headers(): Record<string, string> {
     const h: Record<string, string> = {
-      authorization: `Bearer ${this.cfg.apiKey}`,
+      authorization: "Bearer " + this.cfg.apiKey,
       "content-type": "application/json",
     };
     if (this.cfg.trustMode) h["x-0g-provider-trust-mode"] = this.cfg.trustMode;
@@ -111,41 +112,36 @@ export class RouterClient implements OgChatClient {
 
   async chat(req: OgChatRequest): Promise<OgChatResponse> {
     const model = await this.model();
-    const payload = {
-      model,
-      messages: [
-        { role: "system", content: req.system },
-        { role: "user", content: req.user },
-      ],
-      temperature: req.temperature ?? 0.1,
-      max_tokens: req.maxTokens ?? 2000,
-      verify_tee: true,
-    };
-    const res = await this.request(
-      "/chat/completions",
-      { method: "POST", headers: this.headers(), body: JSON.stringify(payload) },
-      req.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    );
+    const res = await this.request("/chat/completions", {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "system", content: req.system }, { role: "user", content: req.user }],
+        temperature: req.temperature ?? 0.1,
+        max_tokens: req.maxTokens ?? 2000,
+        verify_tee: true,
+      }),
+    }, req.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     const body: unknown = await res.json().catch(() => null);
     if (!isObj(body)) throw new OgError("BAD_RESPONSE", "0G router returned a non-JSON body");
-    const choices = Array.isArray(body.choices) ? body.choices : [];
-    const first = choices[0];
+    const first = Array.isArray(body.choices) ? body.choices[0] : null;
     const message = isObj(first) && isObj(first.message) ? first.message : null;
-    const content = message ? asString(message.content) : null;
+    const rawContent = message?.content;
+    const content = typeof rawContent === "string"
+      ? asString(rawContent.trim())
+      : Array.isArray(rawContent)
+        ? rawContent.map((part) => isObj(part) ? asString(part.text) ?? "" : "").join("").trim()
+        : null;
     if (content === null) throw new OgError("BAD_RESPONSE", "0G router response had no choices[0].message.content");
 
     const trace = isObj(body.x_0g_trace) ? body.x_0g_trace : null;
     const headerKey = asString(res.headers.get("ZG-Res-Key"));
-    let requestId: string | null = null;
-    let requestIdSource: RequestIdSource | null = null;
     const traceId = trace ? asString(trace.request_id) : null;
     const bodyId = asString(body.id);
-    if (traceId) { requestId = traceId; requestIdSource = "x_0g_trace.request_id"; }
-    else if (headerKey) { requestId = headerKey; requestIdSource = "ZG-Res-Key"; }
-    else if (bodyId) { requestId = bodyId; requestIdSource = "body.id"; }
-    if (!requestId || !requestIdSource) {
-      throw new OgError("NO_REQUEST_ID", "0G response carried no x_0g_trace.request_id, ZG-Res-Key header, or body id");
-    }
+    const requestId = traceId ?? headerKey ?? bodyId;
+    const requestIdSource: RequestIdSource | null = traceId ? "x_0g_trace.request_id" : headerKey ? "ZG-Res-Key" : bodyId ? "body.id" : null;
+    if (!requestId || !requestIdSource) throw new OgError("NO_REQUEST_ID", "0G response carried no x_0g_trace.request_id, ZG-Res-Key header, or body id");
 
     const tee = trace && typeof trace.tee_verified === "boolean" ? trace.tee_verified : null;
     return {
@@ -161,17 +157,13 @@ export class RouterClient implements OgChatClient {
     };
   }
 
-  /** CONFIGURED = reachable and key accepted. Never CONNECTED/VERIFIED: only a real inference earns CONNECTED. */
   async healthCheck(): Promise<IntegrationHealth> {
     const checkedAt = new Date().toISOString();
     try {
       const models = await this.listModels(10_000);
       return { status: "CONFIGURED", detail: `router reachable, key accepted, ${models.length} model(s) listed`, checkedAt };
     } catch (e) {
-      if (e instanceof OgError) {
-        const status = e.code === "NOT_CONFIGURED" ? "NOT_CONFIGURED" : "UNAVAILABLE";
-        return { status, detail: e.message, checkedAt };
-      }
+      if (e instanceof OgError) return { status: e.code === "NOT_CONFIGURED" ? "NOT_CONFIGURED" : "UNAVAILABLE", detail: e.message, checkedAt };
       return { status: "UNAVAILABLE", detail: "unknown error", checkedAt };
     }
   }

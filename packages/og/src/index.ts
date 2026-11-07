@@ -1,10 +1,29 @@
 import { BrokerClient } from "./compute";
-import { RouterClient, routerConfigFromEnv } from "./router";
+import { RouterClient, routerConfigFromEnv, type RouterConfig } from "./router";
 import { OgError, type IntegrationHealth, type OgChatClient } from "./types";
 
 export * from "./types";
-export { RouterClient, routerConfigFromEnv, TESTNET_ROUTER_BASE_URL, MAINNET_ROUTER_HOST } from "./router";
+export {
+  RouterClient,
+  routerConfigFromEnv,
+  TESTNET_ROUTER_BASE_URL,
+  DEFAULT_ROUTER_BASE_URL,
+  DEFAULT_ROUTER_MODEL,
+  MAINNET_ROUTER_HOST,
+} from "./router";
 export { BrokerClient, DEFAULT_TESTNET_RPC } from "./compute";
+
+/** Qualifying TRUSTORA evaluation path: 0G Private Computer Router only. */
+export class PrivateComputerClient extends RouterClient {}
+
+export function privateComputerConfigFromEnv(env: Record<string, string | undefined>): RouterConfig | null {
+  return routerConfigFromEnv(env);
+}
+
+export function createPrivateComputerClientFromEnv(env: Record<string, string | undefined>): PrivateComputerClient | null {
+  const config = privateComputerConfigFromEnv(env);
+  return config ? new PrivateComputerClient(config) : null;
+}
 
 class NoClient implements OgChatClient {
   async chat(): Promise<never> {

@@ -141,20 +141,20 @@ test("with no 0G credentials configured at all, the default path is an honest UN
     assert.equal(report.overall, "UNABLE_TO_ASSESS");
     assert.equal(report.requestId, null);
     assert.equal(report.modelCalled, false);
-    assert.match(report.limitations[0]!, /NOT_CONFIGURED|PROVIDER_NOT_CONFIGURED|credentials/i);
+    assert.match(report.limitations[0]!, /NOT_CONFIGURED|PROVIDER_NOT_CONFIGURED|not configured|credentials/i);
   } finally {
     Object.assign(process.env, saved);
   }
 });
 
-test("a mainnet router URL is refused, not used", async () => {
+test("a non-0G router URL is refused, not used", async () => {
   const saved = { ...process.env };
   process.env.ZG_ROUTER_API_KEY = "test-not-a-real-key";
-  process.env.ZG_ROUTER_BASE_URL = "https://router-api.0g.ai/v1";
+  process.env.ZG_ROUTER_BASE_URL = "https://example.invalid/v1";
   try {
     const report = await run0GEvaluation(params());
     assert.equal(report.overall, "UNABLE_TO_ASSESS");
-    assert.match(report.limitations[0]!, /mainnet|testnet-only/i);
+    assert.match(report.limitations[0]!, /official 0G Router host/i);
     assert.ok(!JSON.stringify(report).includes("test-not-a-real-key"), "the API key never appears in a report");
   } finally {
     for (const k of ["ZG_ROUTER_API_KEY", "ZG_ROUTER_BASE_URL"]) delete process.env[k];

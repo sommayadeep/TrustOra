@@ -18,8 +18,8 @@ test("factory with nothing configured -> path none, chat throws NOT_CONFIGURED, 
   await assert.rejects(r.client.chat({ system: "s", user: "u" }), (e: unknown) => e instanceof OgError && e.code === "NOT_CONFIGURED");
   assert.equal((await r.client.healthCheck()).status, "NOT_CONFIGURED");
 });
-test("factory refuses mainnet router URL loudly", () => {
-  assert.throws(() => createOgClientFromEnv({ ZG_ROUTER_API_KEY: "sk-MOCK", ZG_ROUTER_BASE_URL: "https://router-api.0g.ai/v1" }), /mainnet/i);
+test("factory accepts the verified mainnet Router URL", () => {
+  assert.equal(createOgClientFromEnv({ ZG_ROUTER_API_KEY: "sk-MOCK", ZG_ROUTER_BASE_URL: "https://router-api.0g.ai/v1" }).path, "router");
 });
 
 function MOCK_modules(over: { valid?: boolean; chatID?: string | null } = {}): BrokerModules {

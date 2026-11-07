@@ -26,7 +26,12 @@ export async function recordProofTrackEvent(params: {
       referenceValue: params.referenceValue,
     },
   });
-  if (existing) return existing;
+  if (existing) {
+    if (params.verificationStatus && existing.verificationStatus !== params.verificationStatus) {
+      return prisma.proofTrackEventRecord.update({ where: { id: existing.id }, data: { verificationStatus: params.verificationStatus, ...(params.eventType ? { eventType: params.eventType } : {}) } });
+    }
+    return existing;
+  }
 
   const explorerUrl = ProofTrackEngine.getExplorerUrl(
     params.ecosystem,

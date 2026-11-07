@@ -31,6 +31,7 @@ function oldSchema(dbFile: string): string {
     .replace(/^\s*addTxHash .*$/m, "")
     .replace(/^\s*content +String\?.*$/m, "")
     .replace(/^\s*anchorTxHash .*$/m, "")
+    .replace(/^\s*requestedByAddress .*$/m, "")
     .replace(/@@unique\(\[projectId, referenceType, referenceValue\]\)/, "")
     .replace(/@@unique\(\[projectId, sequence\]\)/, "")
     .replace(/model AuthNonce \{[\s\S]*?\n\}\n/, "")
@@ -85,7 +86,11 @@ function makeLegacyFinancialDb(name: string): string {
   @@map("AgentPayment")
 }`);
   writeFileSync(schema, legacy);
-  execFileSync(process.execPath, [require.resolve("prisma/build/index.js"), "db", "push", "--skip-generate", "--schema", schema], { stdio: "pipe" });
+  execFileSync(process.execPath, [require.resolve("prisma/build/index.js"), "db", "push", "--skip-generate", "--schema", schema], {
+    stdio: "pipe",
+    // Match the disposable-database setup above; Prisma 5.22 can otherwise hide the schema-engine cause.
+    env: { ...process.env, RUST_LOG: "info" },
+  });
   const db = new DatabaseSync(file);
   db.exec(`
     INSERT INTO "Project" (id,title,description,clientAddress,budgetUsdc,updatedAt) VALUES ('legacy-project','Legacy','d','0xc',12.345678,CURRENT_TIMESTAMP);
@@ -107,7 +112,7 @@ test("dry run (the default) shows the additive plan and changes nothing, not eve
   const r = run({ dbPath: file, schemaPath, backupDir: join(dir, "bk-dry") });
   assert.equal(r.status, "DRY_RUN");
   assert.deepEqual([...r.plan.newTables].sort(), ["AuthNonce", "Session"]);
-  assert.deepEqual([...r.plan.newColumns].sort(), ["Milestone.addTxHash", "Project.registerTxHash", "Submission.anchorTxHash", "Submission.content"]);
+  assert.deepEqual([...r.plan.newColumns].sort(), ["AgentPayment.requestedByAddress", "Milestone.addTxHash", "Project.registerTxHash", "Submission.anchorTxHash", "Submission.content"]);
   assert.equal(r.plan.newIndexes.filter((i: string) => i.startsWith("unique")).length, 2);
   assert.equal(sha(file), before, "database bytes unchanged");
   assert.equal(existsSync(join(dir, "bk-dry")), false, "no backup folder created on a dry run");
